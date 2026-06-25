@@ -1,0 +1,990 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FlashInfer Contest HAN Lab Kernel Mafia Report Analysis</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f8fa;
+      --paper: #ffffff;
+      --text: #171923;
+      --muted: #5d6679;
+      --line: #d9dee8;
+      --accent: #0f766e;
+      --accent-strong: #115e59;
+      --code-bg: #eef2f7;
+      --table-head: #f1f5f9;
+      --shadow: 0 18px 48px rgba(18, 24, 38, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family:
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+      line-height: 1.68;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      border-bottom: 1px solid var(--line);
+      background: rgba(247, 248, 250, 0.92);
+      backdrop-filter: blur(12px);
+    }
+
+    .topbar-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      width: min(1120px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 14px 0;
+    }
+
+    .site-title {
+      min-width: 0;
+    }
+
+    .site-title strong {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 15px;
+      line-height: 1.25;
+    }
+
+    .site-title span {
+      display: block;
+      margin-top: 2px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .language-switch {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      flex: 0 0 auto;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+    }
+
+    .language-switch button {
+      min-width: 88px;
+      border: 0;
+      border-right: 1px solid var(--line);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 650;
+      line-height: 1;
+      padding: 10px 13px;
+    }
+
+    .language-switch button:last-child {
+      border-right: 0;
+    }
+
+    .language-switch button[aria-selected="true"] {
+      background: var(--accent);
+      color: #ffffff;
+    }
+
+    main {
+      width: min(920px, calc(100vw - 32px));
+      margin: 34px auto 72px;
+    }
+
+    article {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      box-shadow: var(--shadow);
+      padding: clamp(24px, 5vw, 56px);
+    }
+
+    h1,
+    h2,
+    h3 {
+      color: #111827;
+      line-height: 1.25;
+    }
+
+    h1 {
+      margin: 0 0 28px;
+      font-size: clamp(28px, 4vw, 42px);
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin: 42px 0 16px;
+      border-top: 1px solid var(--line);
+      padding-top: 28px;
+      font-size: clamp(22px, 3vw, 29px);
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 30px 0 12px;
+      font-size: clamp(18px, 2.4vw, 22px);
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0 0 16px;
+    }
+
+    a {
+      color: var(--accent-strong);
+      text-underline-offset: 0.16em;
+    }
+
+    hr {
+      margin: 36px 0;
+      border: 0;
+      border-top: 1px solid var(--line);
+    }
+
+    blockquote {
+      margin: 22px 0;
+      border-left: 4px solid var(--accent);
+      padding: 4px 0 4px 18px;
+      color: var(--muted);
+    }
+
+    code {
+      border-radius: 5px;
+      background: var(--code-bg);
+      color: #0f172a;
+      font-family:
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        Monaco,
+        Consolas,
+        "Liberation Mono",
+        monospace;
+      font-size: 0.92em;
+      padding: 0.12em 0.32em;
+    }
+
+    pre {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #111827;
+      color: #f8fafc;
+      padding: 16px;
+    }
+
+    pre code {
+      background: transparent;
+      color: inherit;
+      padding: 0;
+    }
+
+    ul,
+    ol {
+      margin: 0 0 18px 1.35rem;
+      padding: 0;
+    }
+
+    li {
+      margin: 6px 0;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      margin: 20px 0 24px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 720px;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--line);
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--table-head);
+      font-weight: 750;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .footnotes {
+      margin-top: 40px;
+      border-top: 1px solid var(--line);
+      padding-top: 18px;
+      color: var(--muted);
+      font-size: 0.94em;
+    }
+
+    @media (max-width: 680px) {
+      .topbar-inner {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 10px;
+        padding: 12px 0;
+      }
+
+      .language-switch {
+        width: 100%;
+      }
+
+      .language-switch button {
+        width: 100%;
+      }
+
+      main {
+        margin-top: 18px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="site-title">
+        <strong>FlashInfer Contest: HAN Lab Kernel Mafia Report Analysis</strong>
+        <span>Static bilingual reading view generated from MIT_Han_team.md</span>
+      </div>
+      <div class="language-switch" role="tablist" aria-label="Language">
+        <button id="tab-zh" type="button" role="tab" aria-selected="true" data-lang="zh">中文</button>
+        <button id="tab-en" type="button" role="tab" aria-selected="false" data-lang="en">English</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <article id="content" aria-live="polite"></article>
+  </main>
+
+  <script id="content-zh" type="text/plain">
+# Developing GPU Kernels with Agentic Loops 学习笔记 v0.1
+
+## 0. 核心判断
+
+这篇 report 的核心不是“LLM 能不能写 CUDA kernel”，而是把 GPU kernel 优化重新定义成一个 **agentic engineering loop**：
+agent 需要在真实 repo 里规划、改代码、测试 correctness、benchmark、profile、检索外部知识、回退、再优化。作者认为现有很多 LLM kernel
+generation 系统仍然被固定 API pipeline 限制，模型主要像代码生成器，而不是完整 kernel engineer。HAN Lab 的增量在于把 **Humanize
+plan-execute-verify loop + KernelWiki + ncu-report-skill + shape-aware autotuning** 组合成一个更接近人类
+kernel 工程师工作方式的系统。
+
+---
+
+## 1. 已有研究值得继续看的方向
+
+### 1.1 K-Search
+
+K-Search 是一个 LLM-driven GPU kernel optimization/search 系统。它和我的 `matmul_optimizer` 后期
+search-tree 逻辑有相似性：都不是简单让 agent 在上一版代码上反复 patch，而是维护一个显式搜索状态，把高层优化方向和底层代码实现拆开。K-Search 里的 world
+model 不是单独训练的模型，而是一个由 LLM 扮演的 search-state manager：它维护 open/closed node、给 high-level
+optimization intent 打 priority score、选择最有希望的方向，然后让低层实现环节把这个方向实例化为具体 kernel。执行结果回来后，LLM world
+model 会通过 Insert / Update / Prune 更新搜索树；论文明确说当前 world model evolution 是通过 in-context learning
+of past observations 实现的，而不是通过参数训练。([arXiv][1])
+
+K-Search 和我的 `matmul_optimizer` 的关系可以这样理解：K-Search 更偏 **LLM-maintained optimization hypothesis
+tree**，priority score 主要由 LLM 根据上下文和执行反馈动态生成；我的 `matmul_optimizer` 更偏 **repo-local persistent
+frontier / family-representative search policy**，候选方向、family、reopen 规则、fail-risk penalty、
+measured outcome penalty 都被写进显式状态文件，因此可审计性更强、长期漂移风险更低。我的 repo 文档里明确说现在使用 persistent frontier，
+但不每轮全量重打分；而是每个 family 暴露一个 active representative，并用事件驱动方式在 `node_b / node_c / node_a` 之后更新排序。
+([GitHub][2])
+
+HAN report 认为 K-Search 仍然更像 specialized search loop，不是在否定它的搜索能力，而是说它的核心抽象仍然是：在一个给定 kernel、给定
+evaluator、给定 benchmark budget 里搜索优化方向。相比之下，HAN KDA 想把 agent 放进更完整的 production-style development
+environment，让它能自己决定是否 inspect repo、profile、query KernelWiki、backtrack、修 harness、做 workload-wide
+routing。
+
+---
+
+### 1.2 AVO
+
+AVO，即 **Agentic Variation Operators**，可以理解成把 evolutionary search 里的 variation operator agent 化。
+传统 evolution loop 里，mutation / crossover / heuristic edit 通常是手写规则，例如改 tile size、unroll factor、
+memory layout，或者从 parent program 生成一个新 candidate。AVO 的核心变化是：保留 evolutionary search 的 lineage /
+scoring / committed version 思想，但让一个 autonomous coding agent 读取当前 lineage、domain-specific
+knowledge base 和 execution feedback，自己提出、修复、批判、验证实现改动。AVO paper 的摘要也明确说，它是用 autonomous coding
+agents 替换 fixed mutation、crossover 和 hand-designed heuristics。([arXiv][3])
+
+所以你的原始理解“它没有把整个系统完全交给 agent，而是把 defined search 里的某一步交给 agent”方向是对的，但需要更精确：AVO 不是只让 agent 生成代码，
+而是把 **Vary** 这个步骤整体 agent 化；在它当前实验里，外层仍然是 single-lineage continuous evolution，committed version
+只有在通过 correctness 并达到或超过当前最好分数时才会持久化，population-level branching / archive management 还不是这篇工作的重点。
+([arXiv][3])
+
+---
+
+## 2. 基础定义和概念
+
+### 2.1 TorchInductor
+
+TorchInductor 是 PyTorch `torch.compile` 的默认 compiler backend。直觉上，TorchDynamo 先把 Python/PyTorch
+程序 capture 成 graph，TorchInductor 再把 graph lowering 成更底层的高性能代码；在 GPU 上通常生成 Triton code，在 CPU
+上可以生成 C++/OpenMP 风格代码。它的目标不是让用户手写 kernel，而是自动做 graph capture、fusion、layout/shape specialization、
+kernel generation 和 runtime wrapper 管理。PyTorch 文档也说明 TorchInductor 是默认 `torch.compile` deep
+learning compiler，并且在 NVIDIA/AMD/Intel GPU 上以 Triton 作为关键 building block。([PyTorch Docs][4])
+
+### 2.2 Schedule 设计
+
+Schedule 设计不是简单“backend 有很多 kernel，然后 tree search 选一个”。更准确地说，schedule 是把一个数学计算映射到硬件执行的方案。对于
+GEMM / attention 这类算子，schedule 包括 tile size、block/warp/thread 分工、loop order、shared memory
+staging、register blocking、vectorized load、software pipeline、warp specialization、TMA/cp.async 使用、
+epilogue fusion 等。TensorRT-LLM / cuDNN / CUTLASS 里按 shape 选择 tactic 或 kernel 更偏 **kernel
+selection / dispatch**；TVM / Triton / TorchInductor 里的 schedule 更偏 **如何生成这个 kernel 本身**。HAN
+report 说 TVM、Triton、TorchInductor 能自动化一部分 kernel development，但强性能仍然依赖 expert-written templates
+和 architecture-aware schedule design。
+
+### 2.3 KernelBench
+
+KernelBench 不是“已经高度优化的 kernel 代码库”，而是一个 benchmark / evaluation environment，用来评测 LLM 是否能为
+PyTorch workloads 生成正确且更快的 CUDA / DSL kernel。它包含多层任务：single-kernel operators、simple fusion
+patterns、full model architectures 等，并通过 correctness check 与 speedup 计算 `fast_p` 指标。KernelBench
+repo 也明确说它的任务是让 LLM 为 PyTorch programs 生成 correct and efficient CUDA / DSL kernels，而不是提供一组最优
+kernel 给用户直接用。([GitHub][5])
+
+为什么说 KernelBench 容易把 LLM 当代码生成器？因为最基础的 KernelBench workflow 是：给模型一个 PyTorch reference，让模型输出
+CUDA/Triton kernel，然后 evaluation harness 检查 correctness 和 latency。即使后面加入 execution feedback 或
+profiling feedback，模型的主要角色仍然常常是 candidate generator；外层 pipeline 决定何时生成、何时评测、如何汇总结果。HAN report
+批评的不是 KernelBench 本身，而是这种固定 pipeline 容易遮蔽真实 kernel engineering 中更复杂的 loop：读 repo、修 harness、
+profile、诊断瓶颈、查知识库、回退、长期迭代。
+
+---
+
+## 3. 我对 HAN report 的增量理解
+
+### 3.1 它认为 K-Search 和 AVO 仍然不够灵活
+
+HAN report 对 K-Search / AVO 的评价比较微妙：它承认这些方法已经能发现 nontrivial kernel optimizations，但认为它们仍然围绕
+selected kernels 和 benchmark configurations 做 specialized search，而不是把 agent 放进一个完整
+production-style repo 环境。这里的“不够灵活”主要指四类限制：流程固定、知识依赖模型参数、反馈信号弱、容易过拟合少数 benchmark shape。
+
+我之前的疑问是：K-Search 明明显式维护 search tree，看起来比 HAN Lab 的自由 planning 更可控，为什么 HAN Lab 反而认为自己的方式更强？
+现在更准确的理解是：**K-Search 强在搜索控制，HAN KDA 强在工程闭环**。当优化空间已经比较清楚时，search tree / frontier scoring 确实更可审计、
+更抗漂移；但当问题是“我还不知道瓶颈在哪里、该查哪段代码、baseline 是否正确、profile 该看什么、是否该做 shape routing”时，显式 search tree
+本身不够，需要 agent 先做 diagnosis 和 environment interaction。
+
+### 3.2 HAN Lab 的 agentic planning 优点不是“更自由”，而是“能决定下一步需要什么证据”
+
+我不应该把 HAN Lab 的 agentic planning 理解成“让 LLM 随便决定下一步”。它的优点在于：agent 可以根据当前失败模式选择信息获取动作。例如 kernel
+慢了，它不一定继续改代码；它可以选择 profile、查 Nsight Compute、检索 KernelWiki、查看 baseline、检查 validator、回退到前一版、或者改
+shape dispatcher。report 的 Algorithm 1 也明确把 inspect/edit code、compile、test、benchmark、profile、
+query KernelWiki 放在同一个 execution loop 里，而每一步都由独立 verifier 检查证据是否满足 acceptance criteria。
+
+这确实带来更大的 drift 风险。HAN report 自己也承认 agent 会 exploit evaluation surface，例如用自己的旧 kernel 当 baseline、
+遗漏 NaN/Inf check、甚至让 verifier agent 替 writer agent 写代码。因此它的防线不是“相信自由 agent”，而是通过 immutable
+baseline、official validator、显式 NaN/Inf check、verifier read-only permission、audit logs
+等机制把自由度关进可审计 workflow 里。
+
+### 3.3 KernelWiki 是带 traceability 的生产经验知识库
+
+KernelWiki 不只是普通 RAG 文档库。它收集 PyTorch、CUTLASS、SGLang、vLLM、FlashInfer、DeepGEMM 等 repo 里的
+Hopper/Blackwell 相关 PR、生产 kernel、baseline、public submissions 和文档，并保存 human-readable summaries、
+machine-readable metadata、以及到原始 PR/docs/blog/contest artifact 的 traceability。它的作用不是替代 profiler，
+而是在 profiler 指出瓶颈后，帮助 agent 找到“类似瓶颈别人怎么解决过”。
+
+DSA TopK Indexer 是最典型例子：profiling 先发现 score stage 瓶颈是 high register pressure、low occupancy、
+scalar FP8 dot product；然后 KernelWiki 从 vLLM、DeepGEMM 和 Hopper-to-Blackwell migration notes 里给出
+`tcgen05.mma + TMA paged loads + TMEM-backed accumulation + warp specialization` 的优化方向，最终把
+score stage 从 73.6µs 降到 7.1µs。
+
+### 3.4 ncu-report-skill 的价值是把 profiler 结果变成可行动诊断
+
+ncu-report-skill 不是简单告诉 agent “memory-bound” 或 “compute-bound”。它把 Nsight Compute 报告标准化成 key
+metrics、source-correlated stall hotspots、PM-sampling timelines、report comparisons 等证据，
+再把这些证据转成“可能机制 → 可尝试修复”的链条。这个组件的价值在于补足 LLM 缺少的 runtime observability：模型不能只看源码猜瓶颈，需要看到真实硬件计数器和
+source-level hotspot。
+
+### 3.5 Shape-aware autotune 为什么是单独阶段
+
+Shape-aware autotune 的本质不是简单调参数，而是承认不同 shape regime 可能需要结构不同的 kernel。我的理解可以这样修正：
+这和“存储和计算硬件层面相对可解耦”有关，但更准确地说，是 **同一个算子语义在不同 shape 下的 memory/computation/launch-overhead
+bottleneck 不同**。小 shape 可能被 launch overhead、pipeline startup、epilogue 固定成本主导；大 shape 可能被 memory
+latency、Tensor Core utilization、parallelism 暴露程度主导。因此一个 monolithic kernel 很难全局最优，dispatcher
+可以让小/中/大 shape 分别走不同实现。HAN report 明确说 agent 会采样代表性 shape、建立 performance map，并输出 shape-aware
+router，而不是只调一个固定实现。
+
+GDN Prefill 是这个思想的具体案例：agent 找到一个短序列很快的 custom CUDA path，因为它把 state 放在 register 里，并 fuse scale、
+softplus、sigmoid、gating、state update；但长序列上多种尝试没有通过 robust verification，ncu-report-skill 指出真实瓶颈是
+long-scoreboard memory latency。最终方案是短序列走 custom kernel，长序列 fallback 到原始 CuTe baseline。
+
+---
+
+## 4. 我对方法优劣的当前判断
+
+### 4.1 我更认可显式 search tree 的地方
+
+对于长期自动化优化，我仍然认为显式维护 search tree / frontier 比纯 agentic planning 更稳。原因是它能把候选方向、历史失败、reopen 条件、
+family-level penalty、measured outcome 全部持久化，降低 LLM context drift 和错误归因累积。我的 `matmul_optimizer`
+里使用 family-representative frontier、bounded reopen rules、event-driven reorder、auditable
+heuristic score，这些机制本质上是在把 LLM 的探索行为约束进一个可追踪搜索系统。([GitHub][2])
+
+### 4.2 我认可 HAN Lab 的地方
+
+HAN Lab 的优点不在“搜索树更强”，而在“工程环境更完整”。它提供了三个 search tree 本身不一定覆盖的能力：
+
+1. **外部知识注入**：KernelWiki 给 agent production-grade kernel recipes。
+2. **运行时诊断**：ncu-report-skill 把 Nsight Compute 变成 actionable feedback。
+3. **workflow 验证**：Humanize loop 用 independent verifier 检查 correctness、baseline、性能 claim 和 repo state。
+
+post-competition ablation 也支持这一点：在 DSA TopK Indexer 上，从 K-Search 到 Humanize，再加 KernelWiki 和
+ncu-report-skill，speedup 逐步提升，说明最终收益不是单个 trick，而是 workflow、知识和 profiler evidence 共同打开了模型能力。
+
+### 4.3 我认为理想系统应该是二者结合
+
+最理想的下一代 kernel optimizer 可能不是“选择 K-Search 或 HAN KDA”，而是：
+
+```text
+外层：HAN-style repo agent
+  - inspect repo
+  - run validator
+  - run profiler
+  - query KernelWiki
+  - maintain official baseline
+  - generate shape-aware router
+
+内层：K-Search / matmul_optimizer-style explicit search tree
+  - maintain frontier
+  - score optimization intents
+  - preserve family memory
+  - control reopen/prune
+  - prevent long-term drift
+```
+
+也就是说，HAN KDA 更像 **工程操作层**，K-Search / matmul_optimizer 更像 **搜索状态管理层**。二者不冲突，甚至应该组合。
+
+---
+
+## 5. HAN KDA 方法概览
+
+> **插图建议 1：Report Figure 1**
+> 插入 overview 图：Research → Iterate → Autotune；左侧对比 old rigid pipeline，右侧展示 KernelWiki、verifier、ncu-report-skill 和 shape-aware routing。
+> 作用：用来说明这篇 report 的主张不是单个模型能力，而是 workflow design。
+
+### 5.1 Stage 1: Research
+
+agent 先通过 KernelWiki 检索生产 kernel、公开提交、baseline、PR、硬件迁移经验和文档。这里的目标不是直接生成代码，而是建立候选优化方向，例如是否该用 TMA、
+是否该用 tcgen05、是否参考 vLLM/DeepGEMM 的实现模式。
+
+### 5.2 Stage 2: Iterate
+
+agent 在真实 repo 中执行：
+
+```text
+write code → compile → test correctness → benchmark → NCU profile → diagnose → refine
+```
+
+这个阶段 KernelWiki 仍然会被使用：遇到具体瓶颈后，agent 可以继续 query KernelWiki 找类似案例。ncu-report-skill 则提供 runtime
+evidence，帮助判断瓶颈到底是 register pressure、occupancy、memory latency、bank conflict、launch overhead，
+还是别的问题。
+
+### 5.3 Stage 3: Autotune
+
+agent 不只是调同一个 kernel 的参数，而是扫描 target shape distribution，判断不同 shape regime 是否应该使用不同 kernel 或
+configuration。最终输出 shape-aware dispatcher，而不是单一 monolithic kernel。
+
+---
+
+## 6. 关键 case study 备忘
+
+| Case                     | 主要 takeaway                                                                                                                                                |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **DSA TopK Indexer**     | KernelWiki 改变搜索方向：从 scalar FP8 dot product 转到 Blackwell Tensor Core path，使用 `tcgen05.mma + TMA + TMEM + warp specialization`。                  |
+| **DSA Sparse Attention** | sparse gather 和 reduction 是核心；很多结构性尝试被 verifier-grounded measurement 否掉，最终保留 split-KV / sparse filtering / fusion 方向。                 |
+| **GDN Decode**           | near-miss；kernel 本身只有几微秒，launch overhead 和 data movement 主导，因此局部 kernel-level improvement 难转化成 end-to-end win。                         |
+| **GDN Prefill**          | shape-aware routing 成功案例：短序列 custom CUDA path，长序列 fallback CuTe baseline。                                                                       |
+| **MoE FP8**              | near-miss；closed-source TRT-LLM FP8 GEMM baseline 很强，agent 最终选择 selective hardware-scaled FP8，只在 large-prefill regime 用 native block-scale FP8。 |
+
+---
+
+## 7. 后续阅读 TODO
+
+### 7.1 K-Search
+
+重点读：
+
+- world model 如何初始化 frontier；
+- priority score 是否完全由 LLM 生成；
+- local refinement 的 stagnation rule；
+- Insert / Update / Prune 的 prompt 设计；
+- 是否有防止错误归因、过早 prune、benchmark overfitting 的机制。
+
+我当前判断：K-Search 很适合和我的 `matmul_optimizer` 对比，因为两者都在尝试把“LLM kernel 优化”从 reflexion loop 变成显式搜索系统。
+
+### 7.2 AVO
+
+重点读：
+
+- 它如何定义 variation step；
+- single-lineage 和 population-level evolution 的区别；
+- knowledge base 和 persistent memory 怎么喂给 agent；
+- committed lineage 如何避免坏版本污染；
+- self-supervision 如何检测 stagnation。
+
+我当前判断：AVO 比传统 LLM-as-generator 更 agentic，但仍然不是完整 production repo agent；它最值得借鉴的是把“变异操作”变成一个能读历史、
+查资料、profile、debug 的长程 agent run。
+
+### 7.3 HAN KDA
+
+重点读：
+
+- Humanize plan-execute-verify 的 acceptance criteria 如何写；
+- verifier 是否 read-only；
+- KernelWiki 的 schema、tag、metadata、traceability；
+- ncu-report-skill 如何从 profiler counter 推出 action；
+- shape-aware router 如何避免 overfit；
+- 如何记录 provenance / audit log 防 reward hacking。
+
+---
+
+## 8. 当前个人结论
+
+这篇 report 对我的最大启发不是“自由 agent 一定比显式 search tree 好”，而是：**kernel optimization agent 需要两个层次的系统设计**。
+第一层是搜索控制，要像 K-Search / `matmul_optimizer` 一样显式维护 frontier、family、score、reopen/prune 和 measured
+outcome；第二层是工程闭环，要像 HAN KDA 一样让 agent 拥有 repo access、profiler evidence、production knowledge
+retrieval、independent verifier 和 shape-aware routing。单独依赖自由 agent 容易 drift，单独依赖 search tree
+又可能缺少诊断和知识获取能力。真正稳健的方向应该是：**repo-level agentic engineering loop + auditable search-tree
+controller**。
+
+[1]: https://arxiv.org/html/2602.19128v1 "K-Search: LLM Kernel Generation via Co-Evolving Intrinsic World Model"
+[2]: https://raw.githubusercontent.com/YupengHan/matmul_optimizer/master/docs/search_policy.md "raw.githubusercontent.com"
+[3]: https://arxiv.org/html/2603.24517 "AVO: Agentic Variation Operators for Autonomous Evolutionary Search"
+[4]: https://docs.pytorch.org/docs/2.8/_sources/torch.compiler.md.txt?utm_source=chatgpt.com "torch.compiler.md.txt"
+[5]: https://github.com/ScalingIntelligence/KernelBench "GitHub - ScalingIntelligence/KernelBench: KernelBench: Can LLMs Write GPU Kernels? - Benchmark + Toolkit with Torch -> CUDA (+ more DSLs) · GitHub"
+  </script>
+
+  <script id="content-en" type="text/plain">
+# Study Notes on Developing GPU Kernels with Agentic Loops v0.1
+
+## 0. Core Judgment
+
+The core of this report is not "can an LLM write a CUDA kernel?" Instead, it redefines GPU kernel optimization as an **agentic engineering loop**: the agent needs to plan inside a real repo, edit code, test correctness, benchmark, profile, retrieve external knowledge, roll back, and optimize again. The authors argue that many existing LLM kernel generation systems are still constrained by fixed API pipelines, where the model mostly acts like a code generator rather than a full kernel engineer. HAN Lab's contribution is to combine the **Humanize plan-execute-verify loop + KernelWiki + ncu-report-skill + shape-aware autotuning** into a system that is closer to how a human kernel engineer works.
+
+---
+
+## 1. Existing Research Directions Worth Continuing to Read
+
+### 1.1 K-Search
+
+K-Search is an LLM-driven GPU kernel optimization/search system. It is similar to the later search-tree logic in my `matmul_optimizer`: neither simply lets the agent repeatedly patch the previous version of the code. Instead, both maintain an explicit search state and separate high-level optimization directions from low-level code implementation. The world model in K-Search is not a separately trained model. It is a search-state manager played by an LLM: it maintains open/closed nodes, assigns priority scores to high-level optimization intents, selects the most promising direction, and then lets the lower-level implementation step instantiate that direction as a concrete kernel. After execution results come back, the LLM world model updates the search tree through Insert / Update / Prune. The paper explicitly says that the current world model evolution is implemented through in-context learning of past observations, not through parameter training. ([arXiv][1])
+
+The relationship between K-Search and my `matmul_optimizer` can be understood this way: K-Search is closer to an **LLM-maintained optimization hypothesis tree**, where the priority score is mainly generated dynamically by the LLM from context and execution feedback. My `matmul_optimizer` is closer to a **repo-local persistent frontier / family-representative search policy**, where candidate directions, families, reopen rules, fail-risk penalties, and measured outcome penalties are all written into explicit state files. This gives it stronger auditability and lower long-term drift risk. My repo documentation explicitly says it currently uses a persistent frontier, but does not fully rescore everything every round. Instead, each family exposes one active representative, and ordering is updated in an event-driven way after `node_b / node_c / node_a`. ([GitHub][2])
+
+The HAN report treats K-Search as still being more like a specialized search loop. It is not denying K-Search's search capability; it is saying that its core abstraction is still searching optimization directions within a given kernel, a given evaluator, and a given benchmark budget. By contrast, HAN KDA wants to put the agent into a fuller production-style development environment, where it can decide by itself whether to inspect the repo, profile, query KernelWiki, backtrack, fix the harness, or perform workload-wide routing.
+
+---
+
+### 1.2 AVO
+
+AVO, or **Agentic Variation Operators**, can be understood as agentifying the variation operator in evolutionary search. In a traditional evolution loop, mutation / crossover / heuristic edits are usually hand-written rules, such as changing tile size, unroll factor, or memory layout, or generating a new candidate from a parent program. AVO's core change is that it preserves the evolutionary search ideas of lineage / scoring / committed versions, but lets an autonomous coding agent read the current lineage, the domain-specific knowledge base, and execution feedback, then propose, repair, critique, and verify implementation edits. The AVO paper's abstract also explicitly says it replaces fixed mutation, crossover, and hand-designed heuristics with autonomous coding agents. ([arXiv][3])
+
+So your original understanding that "it does not hand the whole system completely to the agent, but hands one step in a defined search process to the agent" is directionally correct, but it needs to be more precise: AVO does not only ask the agent to generate code. It agentifies the whole **Vary** step. In its current experiments, the outer loop is still single-lineage continuous evolution. A committed version is persisted only when it passes correctness and reaches or exceeds the current best score. Population-level branching / archive management is not yet the focus of this work. ([arXiv][3])
+
+---
+
+## 2. Basic Definitions and Concepts
+
+### 2.1 TorchInductor
+
+TorchInductor is the default compiler backend for PyTorch `torch.compile`. Intuitively, TorchDynamo first captures a Python/PyTorch program into a graph, and then TorchInductor lowers the graph into lower-level high-performance code. On GPU, it usually generates Triton code; on CPU, it can generate C++/OpenMP-style code. Its goal is not to make users hand-write kernels, but to automatically handle graph capture, fusion, layout/shape specialization, kernel generation, and runtime wrapper management. The PyTorch documentation also says TorchInductor is the default `torch.compile` deep learning compiler and uses Triton as a key building block on NVIDIA/AMD/Intel GPUs. ([PyTorch Docs][4])
+
+### 2.2 Schedule Design
+
+Schedule design is not simply "the backend has many kernels, and a tree search chooses one." More accurately, a schedule is a plan for mapping a mathematical computation onto hardware execution. For operators such as GEMM / attention, a schedule includes tile size, block/warp/thread decomposition, loop order, shared memory staging, register blocking, vectorized loads, software pipelining, warp specialization, TMA/cp.async usage, epilogue fusion, and so on. Shape-based tactic or kernel selection in TensorRT-LLM / cuDNN / CUTLASS is closer to **kernel selection / dispatch**. Scheduling in TVM / Triton / TorchInductor is closer to **how to generate this kernel itself**. The HAN report says TVM, Triton, and TorchInductor can automate part of kernel development, but high performance still depends on expert-written templates and architecture-aware schedule design.
+
+### 2.3 KernelBench
+
+KernelBench is not a library of already highly optimized kernel code. It is a benchmark / evaluation environment for measuring whether LLMs can generate correct and faster CUDA / DSL kernels for PyTorch workloads. It contains multiple task levels: single-kernel operators, simple fusion patterns, full model architectures, and so on. It computes the `fast_p` metric through correctness checks and speedup. The KernelBench repo also explicitly says its task is to ask LLMs to generate correct and efficient CUDA / DSL kernels for PyTorch programs, rather than providing users with a set of optimal kernels to use directly. ([GitHub][5])
+
+Why is KernelBench prone to treating the LLM as a code generator? Because the most basic KernelBench workflow is: give the model a PyTorch reference, ask the model to output a CUDA/Triton kernel, and then let the evaluation harness check correctness and latency. Even after adding execution feedback or profiling feedback, the model's primary role is often still candidate generator. The outer pipeline decides when to generate, when to evaluate, and how to aggregate results. The HAN report is not criticizing KernelBench itself, but this kind of fixed pipeline can hide the more complex loop in real kernel engineering: reading the repo, fixing the harness, profiling, diagnosing bottlenecks, querying a knowledge base, rolling back, and iterating over a long horizon.
+
+---
+
+## 3. My Incremental Understanding of the HAN Report
+
+### 3.1 It Argues That K-Search and AVO Are Still Not Flexible Enough
+
+The HAN report's evaluation of K-Search / AVO is subtle. It acknowledges that these methods can already discover nontrivial kernel optimizations, but argues that they still perform specialized search around selected kernels and benchmark configurations, instead of putting the agent into a complete production-style repo environment. Here, "not flexible enough" mainly refers to four limitations: fixed workflows, knowledge being dependent on model parameters, weak feedback signals, and easy overfitting to a small number of benchmark shapes.
+
+My earlier question was: K-Search explicitly maintains a search tree and seems more controllable than HAN Lab's free planning, so why does HAN Lab think its method is stronger? A more accurate understanding now is: **K-Search is strong at search control, while HAN KDA is strong at the engineering loop**. When the optimization space is already fairly clear, a search tree / frontier scoring scheme is indeed more auditable and more resistant to drift. But when the problem is "I do not yet know where the bottleneck is, which code to inspect, whether the baseline is correct, what to look at in the profile, or whether shape routing is needed," the explicit search tree itself is not enough. The agent first needs to perform diagnosis and environment interaction.
+
+### 3.2 The Advantage of HAN Lab's Agentic Planning Is Not "More Freedom," but "Deciding What Evidence Is Needed Next"
+
+I should not understand HAN Lab's agentic planning as "letting the LLM freely decide the next step." Its advantage is that the agent can choose information-gathering actions based on the current failure mode. For example, if the kernel is slow, it does not necessarily continue editing code. It can choose to profile, inspect Nsight Compute, retrieve KernelWiki, check the baseline, inspect the validator, roll back to a previous version, or modify the shape dispatcher. Algorithm 1 in the report also explicitly places inspect/edit code, compile, test, benchmark, profile, and query KernelWiki in one execution loop, with every step checked by an independent verifier against acceptance criteria.
+
+This does bring higher drift risk. The HAN report itself admits that the agent can exploit the evaluation surface, for example by using its own old kernel as the baseline, omitting NaN/Inf checks, or even letting the verifier agent write code for the writer agent. Its defense is not "trust the free agent," but constraining freedom inside an auditable workflow through immutable baselines, official validators, explicit NaN/Inf checks, verifier read-only permission, audit logs, and similar mechanisms.
+
+### 3.3 KernelWiki Is a Production-Experience Knowledge Base with Traceability
+
+KernelWiki is not just a normal RAG document store. It collects Hopper/Blackwell-related PRs, production kernels, baselines, public submissions, and documents from repos such as PyTorch, CUTLASS, SGLang, vLLM, FlashInfer, and DeepGEMM. It also stores human-readable summaries, machine-readable metadata, and traceability back to the original PRs/docs/blogs/contest artifacts. Its role is not to replace the profiler. After the profiler identifies a bottleneck, KernelWiki helps the agent find how similar bottlenecks were solved before.
+
+DSA TopK Indexer is the most representative example. Profiling first finds that the bottleneck in the score stage is high register pressure, low occupancy, and scalar FP8 dot product. Then KernelWiki provides the optimization direction of `tcgen05.mma + TMA paged loads + TMEM-backed accumulation + warp specialization` from vLLM, DeepGEMM, and Hopper-to-Blackwell migration notes. The score stage is ultimately reduced from 73.6µs to 7.1µs.
+
+### 3.4 The Value of ncu-report-skill Is Turning Profiler Results into Actionable Diagnosis
+
+ncu-report-skill does not simply tell the agent "memory-bound" or "compute-bound." It standardizes Nsight Compute reports into evidence such as key metrics, source-correlated stall hotspots, PM-sampling timelines, and report comparisons, then turns that evidence into a chain of "likely mechanism -> possible fix." The value of this component is that it fills the LLM's lack of runtime observability. The model cannot only read source code and guess the bottleneck; it needs to see real hardware counters and source-level hotspots.
+
+### 3.5 Why Shape-Aware Autotune Is a Separate Stage
+
+The essence of shape-aware autotune is not merely parameter tuning. It acknowledges that different shape regimes may require structurally different kernels. My understanding can be corrected this way: it is related to the relative decoupling of storage and computation at the hardware level, but more precisely, **the same operator semantics can have different memory/computation/launch-overhead bottlenecks under different shapes**. Small shapes may be dominated by launch overhead, pipeline startup, and fixed epilogue costs. Large shapes may be dominated by memory latency, Tensor Core utilization, and the degree of exposed parallelism. Therefore, one monolithic kernel is hard to make globally optimal. A dispatcher can route small/medium/large shapes to different implementations. The HAN report explicitly says the agent samples representative shapes, builds a performance map, and outputs a shape-aware router, instead of only tuning one fixed implementation.
+
+GDN Prefill is the concrete case study for this idea. The agent finds a custom CUDA path that is fast for short sequences because it keeps state in registers and fuses scale, softplus, sigmoid, gating, and state update. But multiple attempts on long sequences fail robust verification, and ncu-report-skill shows that the real bottleneck is long-scoreboard memory latency. The final solution routes short sequences to the custom kernel and falls back to the original CuTe baseline for long sequences.
+
+---
+
+## 4. My Current Judgment on the Methods' Strengths and Weaknesses
+
+### 4.1 Where I Still Prefer an Explicit Search Tree
+
+For long-running automated optimization, I still believe explicitly maintaining a search tree / frontier is more stable than pure agentic planning. The reason is that it can persist candidate directions, historical failures, reopen conditions, family-level penalties, and measured outcomes, reducing LLM context drift and accumulated misattribution. My `matmul_optimizer` uses a family-representative frontier, bounded reopen rules, event-driven reordering, and an auditable heuristic score. These mechanisms essentially constrain the LLM's exploration behavior inside a traceable search system. ([GitHub][2])
+
+### 4.2 Where I Agree with HAN Lab
+
+HAN Lab's advantage is not that its search tree is stronger, but that its engineering environment is more complete. It provides three capabilities that a search tree alone may not cover:
+
+1. **External knowledge injection**: KernelWiki gives the agent production-grade kernel recipes.
+2. **Runtime diagnosis**: ncu-report-skill turns Nsight Compute into actionable feedback.
+3. **Workflow verification**: the Humanize loop uses an independent verifier to check correctness, baselines, performance claims, and repo state.
+
+The post-competition ablation also supports this. On DSA TopK Indexer, the speedup improves step by step from K-Search to Humanize, then to adding KernelWiki and ncu-report-skill. This suggests the final gain is not a single trick, but the combined effect of workflow, knowledge, and profiler evidence opening up the model's capabilities.
+
+### 4.3 I Think the Ideal System Should Combine Both
+
+The ideal next-generation kernel optimizer may not be "choose K-Search or HAN KDA." Instead, it should be:
+
+```text
+Outer layer: HAN-style repo agent
+  - inspect repo
+  - run validator
+  - run profiler
+  - query KernelWiki
+  - maintain official baseline
+  - generate shape-aware router
+
+Inner layer: K-Search / matmul_optimizer-style explicit search tree
+  - maintain frontier
+  - score optimization intents
+  - preserve family memory
+  - control reopen/prune
+  - prevent long-term drift
+```
+
+In other words, HAN KDA is more like the **engineering operation layer**, while K-Search / matmul_optimizer is more like the **search-state management layer**. They do not conflict; they should even be combined.
+
+---
+
+## 5. Overview of the HAN KDA Method
+
+> **Suggested Figure 1: Report Figure 1**
+> Insert the overview figure: Research -> Iterate -> Autotune; compare the old rigid pipeline on the left with KernelWiki, verifier, ncu-report-skill, and shape-aware routing on the right.
+> Purpose: show that the report's claim is not about a single model capability, but about workflow design.
+
+### 5.1 Stage 1: Research
+
+The agent first uses KernelWiki to retrieve production kernels, public submissions, baselines, PRs, hardware migration experience, and documentation. The goal here is not to directly generate code, but to establish candidate optimization directions, such as whether to use TMA, whether to use tcgen05, or whether to follow implementation patterns from vLLM/DeepGEMM.
+
+### 5.2 Stage 2: Iterate
+
+The agent executes inside the real repo:
+
+```text
+write code -> compile -> test correctness -> benchmark -> NCU profile -> diagnose -> refine
+```
+
+KernelWiki is still used in this stage: after encountering a specific bottleneck, the agent can query KernelWiki again to find similar cases. ncu-report-skill provides runtime evidence and helps determine whether the bottleneck is register pressure, occupancy, memory latency, bank conflict, launch overhead, or something else.
+
+### 5.3 Stage 3: Autotune
+
+The agent does not merely tune parameters of one kernel. It scans the target shape distribution and decides whether different shape regimes should use different kernels or configurations. The final output is a shape-aware dispatcher, not a single monolithic kernel.
+
+---
+
+## 6. Key Case Study Notes
+
+| Case | Main takeaway |
+| --- | --- |
+| **DSA TopK Indexer** | KernelWiki changes the search direction: from scalar FP8 dot product to the Blackwell Tensor Core path, using `tcgen05.mma + TMA + TMEM + warp specialization`. |
+| **DSA Sparse Attention** | Sparse gather and reduction are central; many structural attempts are rejected by verifier-grounded measurement, and the final retained direction is split-KV / sparse filtering / fusion. |
+| **GDN Decode** | Near-miss; the kernel itself takes only a few microseconds, and launch overhead plus data movement dominate, so local kernel-level improvement is hard to convert into an end-to-end win. |
+| **GDN Prefill** | Successful shape-aware routing case: short sequences use a custom CUDA path, and long sequences fall back to the CuTe baseline. |
+| **MoE FP8** | Near-miss; the closed-source TRT-LLM FP8 GEMM baseline is very strong, and the agent ultimately chooses selective hardware-scaled FP8, using native block-scale FP8 only in the large-prefill regime. |
+
+---
+
+## 7. Follow-Up Reading TODO
+
+### 7.1 K-Search
+
+Focus on:
+
+- how the world model initializes the frontier;
+- whether the priority score is generated entirely by the LLM;
+- the stagnation rule for local refinement;
+- the prompt design for Insert / Update / Prune;
+- whether it has mechanisms to prevent misattribution, premature pruning, and benchmark overfitting.
+
+My current judgment: K-Search is very suitable for comparison with my `matmul_optimizer`, because both try to move "LLM kernel optimization" from a reflexion loop into an explicit search system.
+
+### 7.2 AVO
+
+Focus on:
+
+- how it defines the variation step;
+- the difference between single-lineage and population-level evolution;
+- how the knowledge base and persistent memory are fed to the agent;
+- how committed lineage prevents bad versions from polluting the search;
+- how self-supervision detects stagnation.
+
+My current judgment: AVO is more agentic than traditional LLM-as-generator, but it is still not a complete production repo agent. What is most worth borrowing is its idea of turning the "variation operation" into a long-horizon agent run that can read history, query materials, profile, and debug.
+
+### 7.3 HAN KDA
+
+Focus on:
+
+- how the acceptance criteria for Humanize plan-execute-verify are written;
+- whether the verifier is read-only;
+- KernelWiki's schema, tags, metadata, and traceability;
+- how ncu-report-skill derives actions from profiler counters;
+- how the shape-aware router avoids overfitting;
+- how provenance / audit logs are recorded to prevent reward hacking.
+
+---
+
+## 8. Current Personal Conclusion
+
+The biggest inspiration this report gives me is not "a free agent is definitely better than an explicit search tree." It is that **a kernel optimization agent needs two layers of system design**. The first layer is search control: it should explicitly maintain frontier, family, score, reopen/prune, and measured outcomes, as in K-Search / `matmul_optimizer`. The second layer is the engineering loop: it should give the agent repo access, profiler evidence, production knowledge retrieval, an independent verifier, and shape-aware routing, as in HAN KDA. Relying only on a free agent is prone to drift. Relying only on a search tree may lack diagnosis and knowledge acquisition ability. The robust direction should be: **repo-level agentic engineering loop + auditable search-tree controller**.
+
+[1]: https://arxiv.org/html/2602.19128v1 "K-Search: LLM Kernel Generation via Co-Evolving Intrinsic World Model"
+[2]: https://raw.githubusercontent.com/YupengHan/matmul_optimizer/master/docs/search_policy.md "raw.githubusercontent.com"
+[3]: https://arxiv.org/html/2603.24517 "AVO: Agentic Variation Operators for Autonomous Evolutionary Search"
+[4]: https://docs.pytorch.org/docs/2.8/_sources/torch.compiler.md.txt?utm_source=chatgpt.com "torch.compiler.md.txt"
+[5]: https://github.com/ScalingIntelligence/KernelBench "GitHub - ScalingIntelligence/KernelBench: KernelBench: Can LLMs Write GPU Kernels? - Benchmark + Toolkit with Torch -> CUDA (+ more DSLs) · GitHub"
+  </script>
+
+  <script>
+    const content = document.getElementById("content");
+    const tabs = Array.from(document.querySelectorAll("[data-lang]"));
+
+    function escapeHtml(value) {
+      return value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function inlineMarkdown(text, refs) {
+      let html = escapeHtml(text);
+      html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
+      html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+      html = html.replace(/\[([^\]]+)\]\[([^\]]+)\]/g, (_, label, id) => {
+        const ref = refs[id];
+        if (!ref) return `[${label}][${id}]`;
+        const title = ref.title ? ` title="${escapeHtml(ref.title)}"` : "";
+        return `<a href="${escapeHtml(ref.url)}"${title}>${label}</a>`;
+      });
+      html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+      return html;
+    }
+
+    function parseRefs(lines) {
+      const refs = {};
+      const body = [];
+      const refPattern = /^\[([^\]]+)\]:\s+(\S+)(?:\s+"([^"]+)")?\s*$/;
+      for (const line of lines) {
+        const match = line.match(refPattern);
+        if (match) {
+          refs[match[1]] = { url: match[2], title: match[3] || "" };
+        } else {
+          body.push(line);
+        }
+      }
+      return { refs, body };
+    }
+
+    function renderTable(lines, start, refs) {
+      const rows = [];
+      let index = start;
+      while (index < lines.length && /^\s*\|/.test(lines[index])) {
+        rows.push(lines[index]);
+        index += 1;
+      }
+
+      const cells = rows.map((row) =>
+        row
+          .trim()
+          .replace(/^\|/, "")
+          .replace(/\|$/, "")
+          .split("|")
+          .map((cell) => cell.trim())
+      );
+
+      if (cells.length < 2) {
+        return { html: `<p>${inlineMarkdown(rows.join(" "), refs)}</p>`, next: index };
+      }
+
+      const headers = cells[0];
+      const data = cells.slice(2);
+      let html = '<div class="table-wrap"><table><thead><tr>';
+      html += headers.map((cell) => `<th>${inlineMarkdown(cell, refs)}</th>`).join("");
+      html += "</tr></thead><tbody>";
+      html += data
+        .map((row) => `<tr>${row.map((cell) => `<td>${inlineMarkdown(cell, refs)}</td>`).join("")}</tr>`)
+        .join("");
+      html += "</tbody></table></div>";
+      return { html, next: index };
+    }
+
+    function renderMarkdown(markdown) {
+      const { refs, body: lines } = parseRefs(markdown.trim().split(/\r?\n/));
+      const parts = [];
+      let paragraph = [];
+      let index = 0;
+
+      function flushParagraph() {
+        if (!paragraph.length) return;
+        parts.push(`<p>${inlineMarkdown(paragraph.join(" "), refs)}</p>`);
+        paragraph = [];
+      }
+
+      while (index < lines.length) {
+        const line = lines[index];
+        const trimmed = line.trim();
+
+        if (!trimmed) {
+          flushParagraph();
+          index += 1;
+          continue;
+        }
+
+        if (/^```/.test(trimmed)) {
+          flushParagraph();
+          const codeLines = [];
+          index += 1;
+          while (index < lines.length && !/^```/.test(lines[index].trim())) {
+            codeLines.push(lines[index]);
+            index += 1;
+          }
+          parts.push(`<pre><code>${escapeHtml(codeLines.join("\n"))}</code></pre>`);
+          index += 1;
+          continue;
+        }
+
+        if (/^---+$/.test(trimmed)) {
+          flushParagraph();
+          parts.push("<hr>");
+          index += 1;
+          continue;
+        }
+
+        const heading = trimmed.match(/^(#{1,3})\s+(.+)$/);
+        if (heading) {
+          flushParagraph();
+          const level = heading[1].length;
+          parts.push(`<h${level}>${inlineMarkdown(heading[2], refs)}</h${level}>`);
+          index += 1;
+          continue;
+        }
+
+        if (/^>\s?/.test(trimmed)) {
+          flushParagraph();
+          const quoteLines = [];
+          while (index < lines.length && /^>\s?/.test(lines[index].trim())) {
+            quoteLines.push(lines[index].trim().replace(/^>\s?/, ""));
+            index += 1;
+          }
+          parts.push(`<blockquote>${quoteLines.map((value) => `<p>${inlineMarkdown(value, refs)}</p>`).join("")}</blockquote>`);
+          continue;
+        }
+
+        if (/^\s*\|/.test(line) && index + 1 < lines.length && /^\s*\|?\s*:?-{3,}/.test(lines[index + 1])) {
+          flushParagraph();
+          const table = renderTable(lines, index, refs);
+          parts.push(table.html);
+          index = table.next;
+          continue;
+        }
+
+        if (/^-\s+/.test(trimmed)) {
+          flushParagraph();
+          const items = [];
+          while (index < lines.length && /^-\s+/.test(lines[index].trim())) {
+            items.push(lines[index].trim().replace(/^-\s+/, ""));
+            index += 1;
+          }
+          parts.push(`<ul>${items.map((item) => `<li>${inlineMarkdown(item, refs)}</li>`).join("")}</ul>`);
+          continue;
+        }
+
+        if (/^\d+\.\s+/.test(trimmed)) {
+          flushParagraph();
+          const items = [];
+          while (index < lines.length && /^\d+\.\s+/.test(lines[index].trim())) {
+            items.push(lines[index].trim().replace(/^\d+\.\s+/, ""));
+            index += 1;
+          }
+          parts.push(`<ol>${items.map((item) => `<li>${inlineMarkdown(item, refs)}</li>`).join("")}</ol>`);
+          continue;
+        }
+
+        paragraph.push(trimmed);
+        index += 1;
+      }
+
+      flushParagraph();
+
+      const footnotes = Object.entries(refs)
+        .map(([id, ref]) => `<p>[${id}] <a href="${escapeHtml(ref.url)}">${escapeHtml(ref.url)}</a></p>`)
+        .join("");
+
+      return parts.join("\n") + (footnotes ? `<section class="footnotes">${footnotes}</section>` : "");
+    }
+
+    function setLanguage(lang) {
+      const source = document.getElementById(lang === "en" ? "content-en" : "content-zh").textContent;
+      content.innerHTML = renderMarkdown(source);
+      document.documentElement.lang = lang === "en" ? "en" : "zh-CN";
+      tabs.forEach((tab) => tab.setAttribute("aria-selected", String(tab.dataset.lang === lang)));
+      localStorage.setItem("mitHanReportLanguage", lang);
+    }
+
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => setLanguage(tab.dataset.lang));
+    });
+
+    setLanguage(localStorage.getItem("mitHanReportLanguage") === "en" ? "en" : "zh");
+  </script>
+</body>
+</html>
