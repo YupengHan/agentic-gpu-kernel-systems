@@ -111,6 +111,22 @@ Questions:
 
 <!-- Relevant because it emphasizes trace-based workflow construction and reuse, which maps naturally onto kernel optimization attempts. -->
 
+### K-Search
+
+<!-- [K-Search](https://arxiv.org/abs/2602.19128) is directly relevant because it
+treats LLM-driven kernel generation as evidence-guided search over bottleneck
+hypotheses, design alternatives, and optimization strategies. Its co-evolving
+world model is a useful comparison point for the KernelWiki and experiment-memory
+directions in this repo. -->
+
+### AVO
+
+<!-- [AVO](https://arxiv.org/abs/2603.24517) is relevant because it elevates the
+LLM-backed coding agent from candidate generator to evolutionary variation
+operator. The method uses lineage, domain knowledge, and execution feedback to
+propose, repair, critique, and verify implementation edits, making it a strong
+example of autonomous kernel-search loops. -->
+
 ## TODO
 
 - [ ] Study the MIT/HAN Lab report first, then start a dedicated KernelWiki notes file.
@@ -123,4 +139,6 @@ Questions:
 ## References
 
 - [FlashInfer MLSys 2026 AI Kernel Generation Contest](https://mlsys26.flashinfer.ai/)
+- [K-Search: LLM Kernel Generation via Co-Evolving Intrinsic World Model](https://arxiv.org/abs/2602.19128)
+- [AVO: Agentic Variation Operators for Autonomous Evolutionary Search](https://arxiv.org/abs/2603.24517)
 - [YupengHan/matmul_optimizer](https://github.com/YupengHan/matmul_optimizer)
