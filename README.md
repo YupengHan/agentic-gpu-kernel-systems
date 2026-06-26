@@ -2,7 +2,7 @@
 
 > A research note repository studying **agentic + harness loops** as a primitive for **fast-and-verifiable tasks**, with **CUDA kernel generation and optimization** as a high-value case study. This repo distills lessons from the top teams in the FlashInfer AI Kernel Generation Contest, which I discovered too late to join but now want to study deeply after the contest has concluded.
 
-This repository is inspired by the [FlashInfer MLSys 2026 AI Kernel Generation Contest](https://mlsys26.flashinfer.ai/) and my earlier [matmul optimization repo](https://github.com/YupengHan/matmul_optimizer).
+This repository is inspired by the [FlashInfer MLSys 2026 AI Kernel Generation](https://mlsys26.flashinfer.ai/)[Contest](https://mlsys26.flashinfer.ai/) and my earlier [matmul optimization repo](https://github.com/YupengHan/matmul_optimizer).
 
 My matmul project was an initial attempt to structure CUDA kernel optimization around generation, verification, benchmarking, and profiling. The FlashInfer contest then revealed how far this approach can scale when combined with stronger evaluation pipelines, richer experiment tracking, and high-quality kernel references.
 
@@ -35,7 +35,7 @@ GPU kernel optimization is a useful setting for studying agentic + harness loops
 
 This structure gives LLM agents a much more stable operating regime. Each update can stay small and local, so the system can move through a sequence of bounded code changes rather than relying on a single large generation. Bad changes can be reverted. Different attempts can be isolated into separate sessions, which makes context easier to manage. Most importantly, the probabilistic behavior of the model is anchored by a deterministic evaluation harness, instead of being allowed to drift without reliable external correction.
 
-## Contest Background
+<!-- ## Contest Background
 
 ### Track A: Fused MoE
 
@@ -64,7 +64,7 @@ loops, benchmark tiers, and curated kernel knowledge.
 
 ### Dogacel: Durable Artifacts + Workload Inspector + Tiered Benchmarking
 
-### HAN Lab: KernelWiki + `ncu-report-skill` + Verifier Loop
+### HAN Lab: KernelWiki + `ncu-report-skill` + Verifier Loop -->
 
 ## My Main Takeaways
 
