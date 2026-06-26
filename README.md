@@ -4,7 +4,7 @@
 
 This repository is inspired by the [FlashInfer MLSys 2026 AI Kernel Generation](https://mlsys26.flashinfer.ai/)[Contest](https://mlsys26.flashinfer.ai/) and my earlier [matmul optimization repo](https://github.com/YupengHan/matmul_optimizer).
 
-My matmul project was an initial attempt to structure CUDA kernel optimization around generation, verification, benchmarking, and profiling. The FlashInfer contest then revealed how far this approach can scale when combined with stronger evaluation pipelines, richer experiment tracking, and high-quality kernel references.
+My matmul project was an initial attempt to structure CUDA kernel optimization around generation, verification, benchmarking, and profiling. The FlashInfer contest revealed how far this approach can scale when combined with stronger evaluation pipelines, richer experiment tracking, and high-quality kernel references.
 
 Because I discovered the contest too late to participate, this repository is my post-contest study notebook. It reviews the top teams' reports, extracts common system patterns, and organizes the open research questions that seem worth pursuing next.
 
