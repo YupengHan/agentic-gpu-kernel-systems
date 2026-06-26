@@ -13,8 +13,6 @@ Because I discovered the contest too late to participate, this repository is my 
 - [Repository README](https://github.com/YupengHan/agentic-gpu-kernel-systems#readme)
 - [KDA Kernel Mafia FlashInfer Workflow Analysis](https://yupenghan.github.io/agentic-gpu-kernel-systems/flashinfer_contest_han_lab_kernel_mafia_analysis.html)
 
-The analysis report stays in HTML so the page can switch between Chinese and English. GitHub's file viewer shows HTML as source, so the readable version is served through GitHub Pages.
-
 ## TL;DR
 
 LLM-based kernel optimization is moving from isolated code generation toward closed-loop experimental systems. Once compilation, correctness testing, benchmarking, profiling, and regression checks are built into the loop, kernel improvement becomes a measurable search problem rather than a one-shot coding task.
