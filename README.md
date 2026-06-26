@@ -35,7 +35,7 @@ GPU kernel optimization is a useful setting for studying agentic + harness loops
 
 This structure gives LLM agents a much more stable operating regime. Each update can stay small and local, so the system can move through a sequence of bounded code changes rather than relying on a single large generation. Bad changes can be reverted. Different attempts can be isolated into separate sessions, which makes context easier to manage. Most importantly, the probabilistic behavior of the model is anchored by a deterministic evaluation harness, instead of being allowed to drift without reliable external correction.
 
-## Contest Background
+<!-- ## Contest Background
 
 ### Track A: Fused MoE
 
@@ -64,7 +64,7 @@ loops, benchmark tiers, and curated kernel knowledge.
 
 ### Dogacel: Durable Artifacts + Workload Inspector + Tiered Benchmarking
 
-### HAN Lab: KernelWiki + `ncu-report-skill` + Verifier Loop
+### HAN Lab: KernelWiki + `ncu-report-skill` + Verifier Loop -->
 
 ## My Main Takeaways
 
