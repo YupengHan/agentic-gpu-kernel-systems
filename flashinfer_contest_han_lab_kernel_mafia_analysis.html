@@ -312,18 +312,22 @@ kernel 工程师工作方式的系统。
 
 ## 1. Core Thesis
 
-本文分析的是 KDA / Kernel Mafia team 在 FlashInfer Full-Agent workflow 中提出的 kernel optimization 方法；官方队名为 HAN Lab Kernel Mafia。KDA report 对应的公开代码和 prompts 发布在 [mit-han-lab/mlsys2026-flashinfer-constest][1]。
+本文分析的是 KDA / Kernel Mafia team 在 FlashInfer Full-Agent workflow 中提出的 kernel optimization 方法；官方队名为 HAN Lab Kernel Mafia。KDA report [mit-han-lab/mlsys2026-flashinfer-constest][1]。
 
-这篇 report 的核心不是要单独证明“LLM 能不能写 CUDA kernel”。在我看来，这已经逐渐成为 top teams 的一个共识：frontier LLM 已经不只是 chatbot，也不只是一次性 code completion 工具；当它被放进 Ralph loop、autoresearch-style loop、agentic coding workflow 或更清晰的知识管理系统里，它已经可以参与 fast-feedback optimization task。具体到 kernel optimization，agent 的工作已经不只是输出一段 kernel code，而是尝试理解任务目标，检查现有代码和 baseline，修改 kernel，运行 correctness check，benchmark latency，调用 profiler，定位瓶颈，并根据反馈继续迭代。这个 report 的重点，是 KDA team 如何把这种共识进一步组织成一个更接近 repo-level kernel engineering 的 workflow。
+参赛的top teams的一个共识：frontier LLM 已经不只是能写 CUDA kernel的 chatbot，当它被放进 Ralph loop、autoresearch-style loop、agentic coding workflow 或更清晰的知识管理系统里，它可以参与 fast-feedback optimization task。
+具体到 kernel optimization，agent除了生成kernel code，还能尝试理解任务目标，检查现有代码和 baseline，修改 kernel，运行 correctness check，benchmark latency，调用 profiler，定位瓶颈，并根据反馈继续迭代。
+这个 report 的重点，是 KDA team 如何把这种共识进一步组织成一个更接近 repo-level kernel engineering 的 workflow。
 
-KDA 的出发点是：现有 compiler、DSL、kernel generation 和 search workflow 都有价值，但它们仍然没有完整覆盖真实 kernel 工程闭环。TVM、Triton、TorchInductor 这类系统自动化了一部分 kernel development，但高性能实现仍然依赖 expert-written templates、schedule design 和 architecture-aware tuning；很多 LLM-based kernel generation/search 系统虽然已经能生成、修改或搜索候选 kernel，但外层流程仍然相对固定：什么时候生成代码、什么时候测试、什么时候 profile、什么时候 rollback、什么时候换方向，往往由预设 pipeline 控制。KDA 看到的问题不是“这些系统没用”，而是它们仍然受限于上一代自动化 workflow 的设计方式：搜索空间、反馈形式、知识来源和工具调用路径都不够 flexible，agent 很难像 human kernel engineer 一样根据当前证据选择下一步该获取什么信息。
+### KDA 的出发点：
+现有 compiler、DSL、kernel generation 和 search workflow 都有价值，但它们仍然没有完整覆盖真实 kernel 工程闭环。
+TVM、Triton、TorchInductor 这类系统自动化了一部分 kernel development，但高性能实现仍然依赖 expert-written templates、schedule design 和 architecture-aware tuning；很多 LLM-based kernel generation/search 系统虽然已经能生成、修改或搜索候选 kernel，但外层流程仍然相对固定：什么时候生成代码、什么时候测试、什么时候 profile、什么时候 rollback、什么时候换方向，往往由预设 pipeline 控制。KDA 看到的问题不是“这些系统没用”，而是它们仍然受限于上一代自动化 workflow 的设计方式：搜索空间、反馈形式、知识来源和工具调用路径都不够 flexible，agent 很难像 human kernel engineer 一样根据当前证据选择下一步该获取什么信息。
 
-因此，KDA 的增量不是简单地“把多个工程能力组成闭环”——这个方向本身已经是很多 top teams 的共识，也和我自己的 optimizer project 经验一致。KDA 更具体的差异在于：它真的尝试让 agent 进入目标开发环境，像工程师一样 inspect repo、edit code、run tests、profile、query knowledge base、backtrack，并把不同能力拆成可协作的 workflow 组件。Humanize loop 用 writer / verifier 分工约束长期 agentic execution；KernelWiki 把外部 production kernel knowledge 做成可检索、可追溯的知识库；ncu-report-skill 把 Nsight Compute profiler output 封装成更高效的诊断 skill；shape-aware autotuning 则被单独拆成一个阶段，用来处理不同 workload shape 下 kernel choice / dispatch policy 的问题。也就是说，KDA 的价值不是“agent 更自由”本身，而是把 repo access、knowledge retrieval、profiling diagnosis、independent verification 和 workload adaptation 组织成一个更完整的 kernel engineering workflow。
+因此，KDA 的增量不是简单地“把多个工程能力组成闭环”——这个方向本身已经是很多 top teams 的共识，也和我自己的 [YupengHan/matmul_optimizer](https://github.com/YupengHan/matmul_optimizer) project 经验一致。
+KDA 更具体的差异在于：它真的尝试让 agent 进入目标开发环境，像工程师一样 inspect repo、edit code、run tests、profile、query knowledge base、backtrack，并把不同能力拆成可协作的 workflow 组件。Humanize loop 用 writer / verifier 分工约束长期 agentic execution；KernelWiki 把外部 production kernel knowledge 做成可检索、可追溯的知识库；ncu-report-skill 把 Nsight Compute profiler output 封装成更高效的诊断 skill；shape-aware autotuning 则被单独拆成一个阶段，用来处理不同 workload shape 下 kernel choice / dispatch policy 的问题。也就是说，KDA 的价值是“agent 更自由”本身，是把 repo access、knowledge retrieval、profiling diagnosis、independent verification 和 workload adaptation 组织成一个更完整的 kernel engineering workflow。
 
-我的解读是，这个 thesis 需要和一个更强但也更危险的说法区分开：KDA 并没有证明“更自由的 agentic planning 一定比显式 search tree 更好”。相反，report 中的 failure modes 说明，agent 自由度越高，越需要严格的 verifier、immutable baseline、official validator、profiling evidence 和 audit trail 来防止 reward hacking 与错误积累。更准确地说，KDA 的价值在于说明：单纯把 LLM 放进固定 kernel search pipeline 里是不够的；要让 agent 真正参与 kernel engineering，系统必须同时提供 repo context、runtime evidence、external knowledge retrieval、independent verification 和 shape-aware workload adaptation。
+我的理解是，KDA 并没有证明“更自由的 agentic planning 一定比显式 search tree 更好”。相反，report 中的 failure modes 说明，agent 自由度越高，越需要严格的 verifier、immutable baseline、official validator、profiling evidence 和 audit trail 来防止 reward hacking 与错误积累。更准确地说，KDA 的价值在于说明：单纯把 LLM 放进固定 kernel search pipeline 里是不够的；要让 agent 真正参与 kernel engineering，系统必须同时提供 repo context、runtime evidence、external knowledge retrieval、independent verification 和 shape-aware workload adaptation。
 
 [1]: https://github.com/mit-han-lab/mlsys2026-flashinfer-constest "mit-han-lab/mlsys2026-flashinfer-constest"
-
 
 
 ---
